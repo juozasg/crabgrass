@@ -1,0 +1,52 @@
+---
+name: two sections
+in: |-
+  first section
+  ---------
+  some blahs
+  
+  second section
+  ------------
+  more lalas
+out: |-
+  <h2><span class="editsection"><a href="/group/page/edit?section=0">[Edit]</a></span>first section</h2>
+  <p>some blahs</p>
+  <h2><span class="editsection"><a href="/group/page/edit?section=1">[Edit]</a></span>second section</h2>
+  <p>more lalas</p>
+---
+name: mixed sections with text
+in: |-
+  Section One
+  -----------
+  section one line one is here
+  section one line two is next
+  
+  Here is section one still
+  
+  Section Two
+  ==========
+  Section two first line
+  Section two another line
+  
+  
+  h2. Section 3 with h2
+  One more line for section 3
+  
+  h3. final section 4
+  
+  section 4 first non-blank line
+out: |-
+  <h2>Section One</h2>
+  <p>section one line one is here<br />
+  section one line two is next</p>
+  <p>Here is section one still</p>
+  <h1>Section Two</h1>
+  <p>Section two first line<br />
+  Section two another line</p>
+  <h2>Section 3 with h2<br />
+  One more line for section 3</h2>
+  <h3>final section 4</h3>
+  <p>section 4 first non-blank line</p>
+
+  
+  
