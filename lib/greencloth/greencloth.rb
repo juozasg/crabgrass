@@ -177,7 +177,7 @@ class GreenCloth < RedCloth::TextileDoc
   def to_html(*before_filters, &block)
     @block = block
 
-    before_filters += [:headings, :edit_section_links, :normalize_code_blocks, :offtag_obvious_code_blocks,
+    before_filters += [:edit_section_links, :normalize_code_blocks, :offtag_obvious_code_blocks,
       :bracket_links, :auto_links, :headings, :embedded, :quoted_block,
       :tables_with_tabs, :wrap_long_words]
 
@@ -215,11 +215,24 @@ class GreenCloth < RedCloth::TextileDoc
     end
   end
   
-  SECTION_HEADINGS_RE = '(h[23].*?\n)'
+  SECTION_START_RE = Regexp.union(/^h[123]\./, HEADINGS_RE)
+  # %r{
+  #     ^h[123]\.                   # beginning of the section heading like 'h1.'
+  #     .*?                         # section contents
+  #     (?=\Z|(^[h][123]\.))        # lookahead matches for next section heading or end of string
+  #   }xm
+  
   # insert [Edit] links for every section
   def edit_section_links(text)
-    @edit_section_link_block ||= lambda {}
-    # text.s
+    
+    text.gsub(SECTIONS_RE) do |section|
+      if @edit_section_link_block.nil?
+        # we don't know how to create links, don't change anything
+        section
+      else
+        
+      end
+    end
   end
 
   def normalize_code_blocks(text)
@@ -461,7 +474,7 @@ class GreenCloth < RedCloth::TextileDoc
       end
     end
   end
-require 'ruby-debug'
+
   ##
   ## WRAP LONG WORDS
   ## really long words totally mess up most layouts.
