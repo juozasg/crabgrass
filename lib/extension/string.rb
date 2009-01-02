@@ -62,5 +62,15 @@ class String
   alias :percent_without_hash :%
   alias :% :percent_with_hash
 
+  # :cal-seq:
+  #  str.index_split(pattern) => anArray
+  #
+  # Split the string for each match of the regular expression _pattern_.
+  # Unlike String#split, this method does not remove the _pattern_ from the input string.
+  # #index_split slices the string on the starting char of each _pattern_ match
+  def index_split(pattern)
+    
+  end
+  
 end
 
