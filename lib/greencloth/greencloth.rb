@@ -167,11 +167,17 @@ class GreenCloth < RedCloth::TextileDoc
     self.original = arg
     arg.formatter = self
   end
+  
+  # the block given receives section title and id (sections are counted from 0)
+  # the block must return a bracket style link for the section edit action for this section
+  def on_edit_section_link(&block)
+    @edit_section_link_block = block
+  end
 
   def to_html(*before_filters, &block)
     @block = block
 
-    before_filters += [:normalize_code_blocks, :offtag_obvious_code_blocks,
+    before_filters += [:headings, :edit_section_links, :normalize_code_blocks, :offtag_obvious_code_blocks,
       :bracket_links, :auto_links, :headings, :embedded, :quoted_block,
       :tables_with_tabs, :wrap_long_words]
 
@@ -191,15 +197,6 @@ class GreenCloth < RedCloth::TextileDoc
     text
   end
 
-  # allow setext style headings
-  HEADINGS_RE = /^(.+?)\r?\n([=-])[=-]+ */
-  def headings(text)
-    text.gsub!(HEADINGS_RE) do
-      tag = $2=="=" ? "h1" : "h2"
-      "#{ tag }. #{$1}\n\n"
-    end
-  end
-
   ##
   ## CODE
   ##
@@ -208,6 +205,22 @@ class GreenCloth < RedCloth::TextileDoc
   # the syntax slightly. In these cases, we simply modify the source text to
   # replace the greencloth markup with the equivelent redcloth markup before
   # any other processing is done.
+  
+  # allow setext style headings
+  HEADINGS_RE = /^(.+?)\r?\n([=-])[=-]+ */
+  def headings(text)
+    text.gsub!(HEADINGS_RE) do
+      tag = $2=="=" ? "h1" : "h2"
+      "#{ tag }. #{$1}\n\n"
+    end
+  end
+  
+  SECTION_HEADINGS_RE = '(h[23].*?\n)'
+  # insert [Edit] links for every section
+  def edit_section_links(text)
+    @edit_section_link_block ||= lambda {}
+    # text.s
+  end
 
   def normalize_code_blocks(text)
     ## make funky code blocks behave like a normal code block.
@@ -448,7 +461,7 @@ class GreenCloth < RedCloth::TextileDoc
       end
     end
   end
-
+require 'ruby-debug'
   ##
   ## WRAP LONG WORDS
   ## really long words totally mess up most layouts.

@@ -1,17 +1,18 @@
 ---
-name: two sections
+name: some markup
 in: |-
-  first section
-  ---------
+  
+  h2. %(editsection)!images/actions/pencil.png!:[edit section -> edit?section=0]%% first section
+  
   some blahs
   
-  second section
-  ------------
+  h3. %(editsection)!images/actions/pencil.png!:[edit section -> /edit?section=1]% second section
+  
   more lalas
 out: |-
-  <h2><span class="editsection"><a href="/group/page/edit?section=0">[Edit]</a></span>first section</h2>
+  <h2><span class="editsection"><a href="/group/page/edit?section=0">[Edit]</a></span> first section</h2>
   <p>some blahs</p>
-  <h2><span class="editsection"><a href="/group/page/edit?section=1">[Edit]</a></span>second section</h2>
+  <h2><span class="editsection"><a href="/group/page/edit?section=1">[Edit]</a></span> second section</h2>
   <p>more lalas</p>
 ---
 name: mixed sections with text
@@ -30,6 +31,7 @@ in: |-
   
   
   h2. Section 3 with h2
+  
   One more line for section 3
   
   h3. final section 4
@@ -43,10 +45,11 @@ out: |-
   <h1>Section Two</h1>
   <p>Section two first line<br />
   Section two another line</p>
-  <h2>Section 3 with h2<br />
-  One more line for section 3</h2>
+  <h2>Section 3 with h2</h2>
+  <p>One more line for section 3</p>
   <h3>final section 4</h3>
   <p>section 4 first non-blank line</p>
+
 
   
   

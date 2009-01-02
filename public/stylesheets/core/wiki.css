@@ -73,6 +73,8 @@
   background-color: white; }
 .wiki code {
   background-color: #fff6dd; }
+.wiki .sectionedit {
+  float: right; }
 
 div.diff {
   background: #f4f4f4;
