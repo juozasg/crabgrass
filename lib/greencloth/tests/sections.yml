@@ -1,21 +1,39 @@
 ---
-name: some markup
+name: some mixed style sections
 in: |-
   
-  h2. %(editsection)!images/actions/pencil.png!:[edit section -> edit?section=0]%% first section
+  h2. first section
   
   some blahs
   
-  h3. %(editsection)!images/actions/pencil.png!:[edit section -> /edit?section=1]% second section
+  second section
+  ==============
   
   more lalas
 out: |-
-  <h2><span class="editsection"><a href="/group/page/edit?section=0">[Edit]</a></span> first section</h2>
+  <h2><span class="editsection"><a href="<a href="/edit?section=1">edit section</a>"><img src="images/actions/pencil.png" alt="" /></a></span> first section</h2>
   <p>some blahs</p>
-  <h2><span class="editsection"><a href="/group/page/edit?section=1">[Edit]</a></span> second section</h2>
+  <h1><span class="editsection"><a href="<a href="/edit?section=2">edit section</a>"><img src="images/actions/pencil.png" alt="" /></a></span> second section</h1>
   <p>more lalas</p>
 ---
-name: mixed sections with text
+name: section without heading
+in: |-
+  some text
+  one more line of text without a heading
+  
+  some blahs
+  
+  h1. first section heading here
+  
+  more lalas
+out: |-
+  <p><span class="editsection"><a href="<a href="/edit?section=0">edit section</a>"><img src="images/actions/pencil.png" alt="" /></a></span> some text<br />
+  one more line of text without a heading</p>
+  <p>some blahs</p>
+  <h1><span class="editsection"><a href="<a href="/edit?section=1">edit section</a>"><img src="images/actions/pencil.png" alt="" /></a></span> first section heading here</h1>
+  <p>more lalas</p>
+---
+name: multiple sections with text
 in: |-
   Section One
   -----------
@@ -38,18 +56,16 @@ in: |-
   
   section 4 first non-blank line
 out: |-
-  <h2>Section One</h2>
+  <h2><span class="editsection"><a href="<a href="/edit?section=0">edit section</a>"><img src="images/actions/pencil.png" alt="" /></a></span> Section One</h2>
   <p>section one line one is here<br />
   section one line two is next</p>
   <p>Here is section one still</p>
-  <h1>Section Two</h1>
+  <h1><span class="editsection"><a href="<a href="/edit?section=1">edit section</a>"><img src="images/actions/pencil.png" alt="" /></a></span> Section Two</h1>
   <p>Section two first line<br />
   Section two another line</p>
-  <h2>Section 3 with h2</h2>
+  <h2><span class="editsection"><a href="<a href="/edit?section=2">edit section</a>"><img src="images/actions/pencil.png" alt="" /></a></span> Section 3 with h2</h2>
   <p>One more line for section 3</p>
-  <h3>final section 4</h3>
+  <h3><span class="editsection"><a href="<a href="/edit?section=3">edit section</a>"><img src="images/actions/pencil.png" alt="" /></a></span> final section 4</h3>
   <p>section 4 first non-blank line</p>
-
-
   
-  
+

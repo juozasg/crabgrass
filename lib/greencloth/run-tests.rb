@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby
 
 require File.join(File.expand_path(File.dirname(__FILE__), 'greencloth'))
+require File.join(File.expand_path(File.dirname(__FILE__), '../extension/string'))
+
 require 'yaml'
 
 i = 0

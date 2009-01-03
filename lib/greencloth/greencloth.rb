@@ -73,6 +73,7 @@ rescue Exception
   gem 'RedCloth', '>= 4.0'
   require 'RedCloth'
 end
+
 require 'redcloth/formatters/html'
 require 'cgi'
 
@@ -224,17 +225,48 @@ class GreenCloth < RedCloth::TextileDoc
   
   # insert [Edit] links for every section
   def edit_section_links(text)
+    sections = text.index_split(SECTION_START_RE)
     
-    text.gsub(SECTIONS_RE) do |section|
-      if @edit_section_link_block.nil?
-        # we don't know how to create links, don't change anything
-        section
-      else
+    # no edit section links for a single section
+    return if sections.size == 1
+    
+    text.replace('')
+    sections.each_with_index do |section, i|
+      if /(^h[123]\.)(.*?$)(.*)/m =~ section
+        # h1. style section
+        heading = $~[1]
+        title = $~[2]
+        content = $~[3]
         
+        # put section link between h1. and the rest of the section
+        text << heading + " " + edit_section_link_markup(title, i) + title + content
+      elsif /\A\s*\Z/ =~ section
+        # whitespace section
+        text << section
+      else
+        # setext section or no heading section
+        title = ""
+        section = " " + section
+        
+        if section =~ HEADINGS_RE
+          title = section.split(/\r?\n/).first
+          # there must be a space between section title and edit link markup
+        end
+        text << edit_section_link_markup(title, i) + section
       end
     end
   end
 
+  def edit_section_link_markup(title, index)
+    if @edit_section_link_block
+      link = @edit_section_link_block.call(title.to_s, index)
+    else
+      link = "/edit?section=#{index}"
+    end
+    
+    "%(editsection)!images/actions/pencil.png!:[edit section -> #{link}]%"
+  end
+  
   def normalize_code_blocks(text)
     ## make funky code blocks behave like a normal code block.
     text.gsub!(/^\/--( .*)?\s*$/, '<code\1>')
