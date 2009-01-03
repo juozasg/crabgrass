@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 
+require File.join(File.expand_path(File.dirname(__FILE__), 'text_sections.rb'))
 require File.join(File.expand_path(File.dirname(__FILE__), 'greencloth'))
 require File.join(File.expand_path(File.dirname(__FILE__), '../extension/string'))
 
