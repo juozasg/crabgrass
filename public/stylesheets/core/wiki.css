@@ -73,8 +73,15 @@
   background-color: white; }
 .wiki code {
   background-color: #fff6dd; }
-.wiki .sectionedit {
-  float: right; }
+.wiki .editsection {
+  float: right;
+  line-height: 18px;
+  text-transform: none;
+  text-decoration: none;
+  font-size: 13px;
+  font-variant: normal;
+  font-weight: normal;
+  font-style: normal; }
 
 div.diff {
   background: #f4f4f4;
