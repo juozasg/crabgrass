@@ -56,4 +56,11 @@ module GreenClothTextSections
     "%(editsection)#{offtag_it(link)}%" 
   end
   
+  # get all sections in an array
+  def sections
+    section_start_re = Regexp.union(GreenCloth::TEXTILE_HEADING_RE, GreenCloth::HEADINGS_RE)
+    # get the sections
+    return self.index_split(section_start_re)
+  end
+
 end
