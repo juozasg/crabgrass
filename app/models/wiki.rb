@@ -90,7 +90,8 @@ class Wiki < ActiveRecord::Base
   #
    
   def smart_save!(params)
-    self.body = params[:body]
+    restore_body(params)
+
     if params[:version] and version > params[:version].to_i
       raise ErrorMessage.new("can't save your data, someone else has saved new changes first.")
     end
@@ -110,7 +111,18 @@ class Wiki < ActiveRecord::Base
       self.user = params[:user]
       save!
     end  
-  end  
+  end
+  
+  def restore_body(params)
+    if params[:section].blank?
+      # editing the whole document
+      self.body = params[:body]
+    else
+      sections = self.sections
+      sections[params[:section].to_i] = params[:body]
+      self.body = sections.join('')
+    end
+  end
 
   ##### RENDERING #################################
  
@@ -187,5 +199,11 @@ class Wiki < ActiveRecord::Base
   def page=(p)
     @page = p
   end
+  
+  #### SECTIONS ########
 
+  # returns an array of all sections
+  def sections
+    GreenCloth.new(body).sections
+  end
 end

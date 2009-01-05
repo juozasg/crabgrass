@@ -82,6 +82,8 @@ class WikiPageController < BasePageController
   ##
 
  def edit
+    @section = params[:section]
+
     if params[:cancel]
       cancel
     elsif params[:break_lock]
@@ -90,15 +92,17 @@ class WikiPageController < BasePageController
       @wiki.body = params[:wiki][:body]
     elsif request.post? and params[:save]
       save
+      @section = nil
     elsif request.get?
       lock
+      @wiki.body = @wiki.sections[@section.to_i] unless @section.blank?
     end
   end
 
   # TODO: make post only    
   def break_lock
     @wiki.unlock
-    redirect_to page_url(@page, :action => 'edit')
+    redirect_to page_url(@page, :action => 'edit', :section => params[:section])
   end
   
   # xhr only
@@ -132,7 +136,7 @@ class WikiPageController < BasePageController
 
   def save
     begin
-      @wiki.smart_save!( params[:wiki].merge(:user => current_user) )
+      @wiki.smart_save!( params[:wiki].merge(:user => current_user, :section => params[:section]) )
       @wiki.unlock(current_user)
       current_user.updated(@page)
       #@page.save
