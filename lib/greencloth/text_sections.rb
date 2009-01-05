@@ -5,10 +5,13 @@ module GreenClothTextSections
   #     (?=\Z|(^[h][123]\.))        # lookahead matches for next section heading or end of string
   #   }xm
   
-  # insert [Edit] links for every section
+  # insert edit section links for every section
   def edit_section_links(text)
-    section_start_re = Regexp.union(/^h[123]\./, GreenCloth::HEADINGS_RE)
-        
+    # don't do anything unless we have a block
+    return if @edit_section_link_block.nil?
+
+    section_start_re = Regexp.union(GreenCloth::TEXTILE_HEADING_RE, GreenCloth::HEADINGS_RE)
+    # get the sections
     sections = text.index_split(section_start_re)
     
     # no edit section links for a single section
@@ -30,24 +33,27 @@ module GreenClothTextSections
       else
         # setext section or no heading section
         title = ""
+        # there must be a space between section title and edit link markup
         section = " " + section
         
         if section =~ GreenCloth::HEADINGS_RE
           title = section.split(/\r?\n/).first
-          # there must be a space between section title and edit link markup
         end
         text << edit_section_link_markup(title, i) + section
       end
     end
   end
 
+  # generate 'edit section' link markup for section number +index+
   def edit_section_link_markup(title, index)
-    if @edit_section_link_block
-      link = @edit_section_link_block.call(title.to_s, index)
-    else
-      link = "/edit?section=#{index}"
-    end
-    
-    "%(editsection)!images/actions/pencil.png!:[edit section -> #{link}]%"
+    # don't generate any links unless we have a block
+    return "" if @edit_section_link_block.nil?
+
+    link = @edit_section_link_block.call(title.to_s, index)
+    return "" if link.nil? or link.empty?
+
+    # offtag the link and embed it in a span
+    "%(editsection)#{offtag_it(link)}%" 
   end
+  
 end

@@ -208,6 +208,8 @@ class GreenCloth < RedCloth::TextileDoc
   # replace the greencloth markup with the equivelent redcloth markup before
   # any other processing is done.
   
+  TEXTILE_HEADING_RE = /^h[123]\./
+
   # allow setext style headings
   HEADINGS_RE = /^(.+?)\r?\n([=-])[=-]+ */
   def headings(text)
