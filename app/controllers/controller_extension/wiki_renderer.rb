@@ -6,7 +6,15 @@ module ControllerExtension::WikiRenderer
 
   def render_wiki_html(body, context_name)
     context_name ||= 'page'
-    GreenCloth.new(body).to_html do |link_data|
+    greencloth = GreenCloth.new(body)
+    
+    # generate section edit links
+    greencloth.on_edit_section_link do |section_title, section_index|
+      label = image_tag("actions/pencil.png") + "edit section"
+      content_tag :a, label, :href => page_url(@page, :action => 'edit', :section => section_index)
+    end
+    
+    greencloth.to_html do |link_data|
       if link_data[:auto]
         generate_wiki_auto_link(link_data[:url])
       elsif link_data[:page]
