@@ -3,7 +3,8 @@ require File.dirname(__FILE__) + '/../test_helper'
 class WikiTest < Test::Unit::TestCase
 
   fixtures :users
-    
+  fixtures :wikis
+  
   def test_creation_group_space
     g = Group.create! :name => 'robots'
 
@@ -46,6 +47,13 @@ class WikiTest < Test::Unit::TestCase
       w.smart_save! :body => 'catelope', :user => users(:blue)
     end
 
+  end
+  
+  def test_section_lock
+    w = wikis(:multi_section)
+    
+    w.lock(Time.now, users(:orange), 0)
+    assert w.locked?(:section => 0), 'locked section (0) should be true'
   end
   
   def test_wiki_page
