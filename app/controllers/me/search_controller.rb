@@ -43,7 +43,7 @@ class Me::SearchController < Me::BaseController
   
   def context
     me_context('large')
-    #add_context 'search', url_for(:controller => 'me/search', :action => nil)
+    add_context 'Search'[:me_search_link], url_for(:controller => '/me/search', :action => nil, :path => params[:path])
   end
 
   def add_excerpts_to_pages(pages)
@@ -61,7 +61,7 @@ class Me::SearchController < Me::BaseController
       :around           => 20
     )
     results.each_with_index do |result, i|
-      pages[i].flag[:exerpt] = result
+      pages[i].flag[:excerpt] = result
     end
   end
     
