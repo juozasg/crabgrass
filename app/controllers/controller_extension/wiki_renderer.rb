@@ -8,17 +8,13 @@ module ControllerExtension::WikiRenderer
     context_name ||= 'page'
     greencloth = GreenCloth.new(body)
     
-    # generate section edit links
-    greencloth.on_edit_section_link do |section_title, section_index|
-      label = image_tag("actions/pencil.png") + "edit section"
-      content_tag :a, label, :href => page_url(@page, :action => 'edit', :section => section_index)
-    end
-    
     greencloth.to_html do |link_data|
       if link_data[:auto]
         generate_wiki_auto_link(link_data[:url])
       elsif link_data[:page]
         generate_wiki_page_link(link_data[:label], (link_data[:context]||context_name), link_data[:page], link_data[:anchor])
+      elsif link_data[:edit_section]
+        generate_wiki_edit_section_link(link_data[:section_title], link_data[:section_index])
       else
         nil # default link
       end
@@ -78,5 +74,10 @@ module ControllerExtension::WikiRenderer
     end
   end
 
+  # generates a link to edit the selected section on this wiki
+  def generate_wiki_edit_section_link(section_title, section_index)
+    label = image_tag("actions/pencil.png") + "edit section"
+    content_tag :a, label, :href => page_url(@page, :action => 'edit', :section => section_index)
+  end
 end
 

@@ -170,12 +170,6 @@ class GreenCloth < RedCloth::TextileDoc
     arg.formatter = self
   end
   
-  # the block given receives section title and id (sections are counted from 0)
-  # the block must return a bracket style link for the section edit action for this section
-  def on_edit_section_link(&block)
-    @edit_section_link_block = block
-  end
-
   def to_html(*before_filters, &block)
     @block = block
 

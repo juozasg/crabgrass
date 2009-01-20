@@ -8,7 +8,7 @@ module GreenClothTextSections
   # insert edit section links for every section
   def edit_section_links(text)
     # don't do anything unless we have a block
-    return if @edit_section_link_block.nil?
+    return if @block.nil?
 
     section_start_re = Regexp.union(GreenCloth::TEXTILE_HEADING_RE, GreenCloth::HEADINGS_RE)
     # get the sections
@@ -47,9 +47,9 @@ module GreenClothTextSections
   # generate 'edit section' link markup for section number +index+
   def edit_section_link_markup(title, index)
     # don't generate any links unless we have a block
-    return "" if @edit_section_link_block.nil?
+    return "" if @block.nil?
 
-    link = @edit_section_link_block.call(title.to_s, index)
+    link = @block.call(:edit_section => true, :section_title => title.to_s, :section_index => index)
     return "" if link.nil? or link.empty?
 
     # offtag the link and embed it in a span

@@ -6,6 +6,12 @@ require File.join(File.expand_path(File.dirname(__FILE__), '../extension/string'
 
 require 'yaml'
 
+def process_link_data(link_data)
+  if link_data[:edit_section]
+    return edit_section_link(link_data[:section_title], link_data[:section_index])
+  end
+end
+
 def edit_section_link(section_title, section_index)
   %Q{<a href="/edit?section=#{section_index}"><img src="http://localhost:3000/images/actions/pencil.png" alt="" />edit section</a>}
 end
@@ -23,9 +29,10 @@ files.each do |testfile|
       
       # generate section edit links for section.yml
       if testfile =~ /sections\.yml/
-        greencloth.on_edit_section_link { |title, i| edit_section_link(title, i) }
+        html = greencloth.to_html {|ld| process_link_data(ld)}
+      else
+        html = greencloth.to_html
       end
-      html = greencloth.to_html      
       html.gsub!( /\n+/, "\n" )
       out_markup.gsub!( /\n+/, "\n" )
       if html == out_markup
