@@ -1,35 +1,36 @@
 #  This is a generic versioned wiki, primarily used by the WikiPage,
 #  but also used directly sometimes by other classes (like for Group's
 #  landing page wiki's).
-# 
-#    create_table "wiki_versions", :force => true do |t|
-#      t.integer  "wiki_id",    :limit => 11
-#      t.integer  "version",    :limit => 11
-#      t.text     "body"
-#      t.text     "body_html"
-#      t.datetime "updated_at"
-#      t.integer  "user_id",    :limit => 11
-#    end
 #
-#    add_index "wiki_versions", ["wiki_id"], :name => "index_wiki_versions"
-#    add_index "wiki_versions", ["wiki_id", "updated_at"], :name => "index_wiki_versions_with_updated_at"
+#     create_table "wiki_versions", :force => true do |t|
+#       t.integer  "wiki_id",    :limit => 11
+#       t.integer  "version",    :limit => 11
+#       t.text     "body"
+#       t.text     "body_html"
+#       t.datetime "updated_at"
+#       t.integer  "user_id",    :limit => 11
+#     end
 #
-#    create_table "wikis", :force => true do |t|
-#      t.text     "body"
-#      t.text     "body_html"
-#      t.datetime "updated_at"
-#      t.integer  "user_id",      :limit => 11
-#      t.integer  "version",      :limit => 11
-#      t.datetime "locked_at"
-#      t.integer  "locked_by_id", :limit => 11
-#    end
+#     add_index "wiki_versions", ["wiki_id"], :name => "index_wiki_versions"
+#     add_index "wiki_versions", ["wiki_id", "updated_at"], :name => "index_wiki_versions_with_updated_at"
 #
-#    add_index "wikis", ["user_id"], :name => "index_wikis_user_id"
-#    add_index "wikis", ["locked_by_id"], :name => "index_wikis_locked_by_id"
+#     create_table "wikis", :force => true do |t|
+#       t.text     "body"
+#       t.text     "body_html"
+#       t.datetime "updated_at"
+#       t.integer  "user_id",      :limit => 11
+#       t.integer  "version",      :limit => 11
+#       t.integer  "lock_version", :limit => 11, :default => 0
+#       t.text     "edit_locks"
+#     end
 #
+#     add_index "wikis", ["user_id"], :name => "index_wikis_user_id"
+#
+
 class Wiki < ActiveRecord::Base
 
-  belongs_to :locked_by, :class_name => 'User', :foreign_key => 'locked_by_id'
+  serialize :edit_locks, Array
+
   belongs_to :user
 
   # a wiki can be used in multiple places: pages or profiles
@@ -49,35 +50,65 @@ class Wiki < ActiveRecord::Base
   LOCKING_PERIOD = 120.minutes
 
   # locks this wiki so that it cannot be edited by anothe user.
-  def lock(time, locked_by)
-    without_locking do
-      without_revision do
-        without_timestamps do
-          update_attributes(:locked_at => time, :locked_by => locked_by)
-        end
+  def lock(time, locked_by, section = :all)
+    time = time.utc
+    lock = {:locked_section => section, :update_section => section,
+      :locked_at => time, :locked_by_id => locked_by.id}
+
+    # save without versions or timestamps
+    update_edit_locks_attribute(edit_locks + [lock])
+  end
+
+  # unlocks a previously locked wiki (or a section) so that it can be edited by anyone.
+  def unlock(locked_by = nil, section = :all)
+    updated_locks = nil
+
+    if section == :all
+      # wipe away everything
+      updated_locks = []
+    elsif locked_by
+      # we have a user and a section
+      updated_locks = edit_locks.reject do |lock|
+        lock[:locked_by_id] == locked_by.id and lock[:update_section] == section
+      end
+    else
+      # we only know the section
+      updated_locks = edit_locks.reject do |lock|
+        lock[:update_section] == section
       end
     end
+
+    # save without versions or timestamps
+    update_edit_locks_attribute(updated_locks) unless updated_locks.nil?
+
   end
 
-  # unlocks a previously locked wiki so that it can be edited by anyone.
-  def unlock(user=nil)
-    lock(nil,nil) if user.nil? or locked_by == user
-  end
-  
-  # not used?
-  # def lock_duration(time)
-  #   ((time - locked_at) / 60).to_i unless locked_at.nil?
-  # end  
-  
-  # returns true if the wiki is locked
-  def locked?(comparison_time=nil)
-    comparison_time ||= Time.zone.now
-    locked_at + LOCKING_PERIOD > comparison_time unless locked_at.nil?
-  end
+  # returns true if +section+ is locked by anyone
+  def locked?(section = :all)
+    update_expired_locks unless @expired_locks_updated
 
+    # find a lock for this section or all sections
+    return edit_locks.detect {|lock| lock[:update_section] == section or lock[:update_section] == :all}
+  end
+  
   # returns true if the page is free to be edited by +user+ (ie, not locked by someone else)
-  def editable_by?(user)
-    not locked? or locked_by == user
+  def editable_by?(user, section = :all)
+    return true if !locked?(section)
+
+    # find if user has a lock for this section
+    edit_locks.detect {|lock| lock[:locked_by_id] == user.id and lock[:update_section] == section}
+  end
+
+  # :call-seq:
+  #   wiki.edit_locks => [{:locked_section => n, :update_section => k, :locked_by_id => user_id, locked_at => Time}, {...}, {...}, ...]
+  #
+  # accessor for +edit_locks+ attribute. The default value is +[]+
+  # +locked_section+ is the index of the section the user decided to lock
+  # since section indeces are unstable (deleting/inserting sections at a low number index changes all the later indexes),
+  # we track +update_section+ which is the latest index identifying the section user locked
+  def edit_locks
+    # return [] if the attribute is not set
+    read_attribute(:edit_locks) || write_attribute(:edit_locks, Array.new)
   end
   
   ##
@@ -132,7 +163,7 @@ class Wiki < ActiveRecord::Base
     end 
   end
 
-  self.non_versioned_columns << 'locked_by_id' << 'locked_at'
+  self.non_versioned_columns << 'edit_locks' << 'lock_version'
 
 
   # only save a new version if the body has changed
@@ -288,4 +319,30 @@ class Wiki < ActiveRecord::Base
   def sections
     GreenCloth.new(body).sections
   end
+
+
+  #### PROTECTED METHODS #######
+  protected
+
+  def update_expired_locks
+    @expired_locks_updated = true
+    current_time = Time.zone.now
+
+    updated_locks = edit_locks.select do |lock|
+      # reject if past due and time is used
+      lock[:locked_at] + LOCKING_PERIOD > current_time and !lock[:locked_at].nil?
+    end
+
+    # save locks if something changed
+    update_edit_locks_attribute(updated_locks) if updated_locks != edit_locks
+  end
+
+  def update_edit_locks_attribute(updated_locks)
+    without_revision do
+      without_timestamps do
+        update_attribute(:edit_locks, updated_locks)
+      end
+    end
+  end
+
 end

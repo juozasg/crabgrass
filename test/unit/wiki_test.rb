@@ -25,7 +25,10 @@ class WikiTest < Test::Unit::TestCase
     
     assert w.locked?, 'locked should be true'
     assert w.editable_by?(users(:blue)), 'blue should be able to edit wiki'
-    assert !w.editable_by?(users(:red)), 'red should not be able to edit wiki'  
+    assert !w.editable_by?(users(:red)), 'red should not be able to edit wiki'
+
+    assert !w.editable_by?(users(:blue), 0), 'blue should not be able to edit wiki section 0'
+    assert !w.editable_by?(users(:red), 0), 'red should not be able to edit wiki section 0'
   end
   
   
@@ -53,7 +56,13 @@ class WikiTest < Test::Unit::TestCase
     w = wikis(:multi_section)
     
     w.lock(Time.now, users(:orange), 0)
-    assert w.locked?(:section => 0), 'locked section (0) should be true'
+    assert w.locked?(0), 'locked section (0) should be true'
+
+    assert w.editable_by?(users(:orange), 0), 'orange should be able to edit wiki section 0'
+    assert !w.editable_by?(users(:red), 0), 'red should not be able to edit wiki section 0'
+
+    assert w.editable_by?(users(:orange), 1), 'orange should be able to edit wiki section 1'
+    assert w.editable_by?(users(:blue), 1), 'blue should be able to edit wiki section 1'
   end
   
   def test_wiki_page
