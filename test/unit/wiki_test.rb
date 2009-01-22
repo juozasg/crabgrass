@@ -5,6 +5,11 @@ class WikiTest < Test::Unit::TestCase
   fixtures :users
   fixtures :wikis
   
+  def setup
+    @orange_id = users(:orange).id
+    @blue_id = users(:blue).id
+  end
+
   def test_creation_group_space
     g = Group.create! :name => 'robots'
 
@@ -64,12 +69,80 @@ class WikiTest < Test::Unit::TestCase
     assert w.editable_by?(users(:orange), 1), 'orange should be able to edit wiki section 1'
     assert w.editable_by?(users(:blue), 1), 'blue should be able to edit wiki section 1'
   end
-  
+
+  def test_editable_by
+    w = wikis(:multi_section)
+
+    assert w.editable_by?(users(:orange), :all), 'orange should be able to edit whole wiki body'
+    assert w.editable_by?(users(:blue), :all), 'blue should be able to edit whole wiki body'
+
+    assert w.editable_by?(users(:orange), 0), 'orange should be able to edit wiki section 0'
+    assert w.editable_by?(users(:blue), 0), 'blue should be able to edit wiki section 0'
+
+    # lock all sections
+    w.lock(Time.now, users(:orange), :all)
+
+    assert w.editable_by?(users(:orange), :all), 'orange should be able to edit whole wiki body'
+    assert !w.editable_by?(users(:blue), :all), 'blue should not be able to edit whole wiki body'
+
+    assert !w.editable_by?(users(:orange), 0), 'orange should not be able to edit wiki section 0'
+    assert !w.editable_by?(users(:blue), 0), 'blue should not be able to edit wiki section 0'
+  end
+
+  def test_section_editable_by
+    w = wikis(:multi_section)
+
+    assert w.editable_by?(users(:orange), :all), 'orange should be able to edit whole wiki body'
+    assert w.editable_by?(users(:blue), :all), 'blue should be able to edit whole wiki body'
+
+    assert w.editable_by?(users(:orange), 0), 'orange should be able to edit wiki section 0'
+    assert w.editable_by?(users(:blue), 0), 'blue should be able to edit wiki section 0'
+
+    # lock first section
+    w.lock(Time.now, users(:orange), 0)
+
+    assert !w.editable_by?(users(:orange), :all), 'orange should not be able to edit whole wiki body'
+    assert !w.editable_by?(users(:blue), :all), 'blue should not be able to edit whole wiki body'
+
+    assert w.editable_by?(users(:orange), 0), 'orange should be able to edit wiki section 0'
+    assert !w.editable_by?(users(:blue), 0), 'blue should not be able to edit wiki section 0'
+  end
+
+  def test_locked_by_id
+    w = wikis(:multi_section)
+
+    assert_nil w.locked_by_id(:all), "no one should be the locker of the whole wiki body"
+    assert_nil w.locked_by_id(1), "no one should be the locker of the wiki section 1"
+    assert_nil w.locked_by_id(0), "no one should be the locker of the wiki section 0"
+
+    # lock all sections
+    w.lock(Time.now, users(:orange), :all)
+
+    assert_equal @orange_id, w.locked_by_id(:all), "orange should be the locker of the whole wiki body"
+    assert_equal @orange_id, w.locked_by_id(0), "orange should appear as the locker of wiki section 0"
+    assert_equal @orange_id, w.locked_by_id(1), "orange should appear as the locker of wiki section 1"
+  end
+
+  def test_section_locked_by_id
+    w = wikis(:multi_section)
+
+    assert_nil w.locked_by_id(:all), "no one should be the locker of the whole wiki body"
+    assert_nil w.locked_by_id(1), "no one should be the locker of the wiki section 1"
+    assert_nil w.locked_by_id(0), "no one should be the locker of the wiki section 0"
+
+    # lock one section
+    w.lock(Time.now, users(:orange), 1)
+
+    assert_equal @orange_id, w.locked_by_id(:all), "orange should be the locker of the whole wiki body"
+    assert_nil w.locked_by_id(0), "no one should appear as the locker of wiki section 0"
+    assert_equal @orange_id, w.locked_by_id(1), "orange should appear as the locker of wiki section 1"
+  end
+
   def test_wiki_page
   end
 
   def test_associations
     assert check_associations(Wiki)
   end
-  
+
 end
