@@ -29,7 +29,7 @@
 
 class Wiki < ActiveRecord::Base
 
-  serialize :edit_locks, Array
+  serialize :edit_locks, HashWithIndifferentAccess
 
   belongs_to :user
 
@@ -49,37 +49,30 @@ class Wiki < ActiveRecord::Base
 
   LOCKING_PERIOD = 120.minutes
 
-  # locks this wiki so that it cannot be edited by anothe user.
+  # locks this wiki so that it cannot be edited by another user.
+  # this method overwrites existing locks.
   def lock(time, locked_by, section = :all)
     time = time.utc
-    lock = {:locked_section => section, :update_section => section,
-      :locked_at => time, :locked_by_id => locked_by.id}
+
+    # over write the existing lock if there's one. the caller is responsible
+    edit_locks[section] = {:locked_at => time, :locked_by_id => locked_by.id}
+    edit_locks[section][:locked_section] = section unless section == :all
 
     # save without versions or timestamps
-    update_edit_locks_attribute(edit_locks + [lock])
+    update_edit_locks_attribute(edit_locks)
   end
 
   # unlocks a previously locked wiki (or a section) so that it can be edited by anyone.
-  def unlock(locked_by = nil, section = :all)
-    updated_locks = nil
-
+  def unlock(section = :all)
     if section == :all
-      # wipe away everything
-      updated_locks = []
-    elsif locked_by
-      # we have a user and a section
-      updated_locks = edit_locks.reject do |lock|
-        lock[:locked_by_id] == locked_by.id and lock[:update_section] == section
-      end
+      # wipe away everything. safer in case of stray locks
+      edit_locks.clear
     else
-      # we only know the section
-      updated_locks = edit_locks.reject do |lock|
-        lock[:update_section] == section
-      end
+      edit_locks[section] = nil
     end
 
     # save without versions or timestamps
-    update_edit_locks_attribute(updated_locks) unless updated_locks.nil?
+    update_edit_locks_attribute(edit_locks)
 
   end
 
@@ -88,29 +81,38 @@ class Wiki < ActiveRecord::Base
     update_expired_locks unless @expired_locks_updated
 
     # find a lock for this section or all sections
-    return edit_locks.detect {|lock| lock[:update_section] == section or lock[:update_section] == :all}
+    return edit_locks[section]
   end
-  
+
   # returns true if the page is free to be edited by +user+ (ie, not locked by someone else)
   def editable_by?(user, section = :all)
-    return true if !locked?(section)
+    update_expired_locks unless @expired_locks_updated
 
-    # find if user has a lock for this section
-    edit_locks.detect {|lock| lock[:locked_by_id] == user.id and lock[:update_section] == section}
+    if section != :all and edit_locks[:all]
+      # we're trying to edit a section while the whole thing is locked
+      return false
+    elsif edit_locks[section].nil? or edit_locks[section][:locked_by_id] == user.id
+      # we have no lock for this section or the lock belongs to this user
+      return true
+    else
+      return false
+    end
   end
 
   # :call-seq:
-  #   wiki.edit_locks => [{:locked_section => n, :update_section => k, :locked_by_id => user_id, locked_at => Time}, {...}, {...}, ...]
+  #   wiki.edit_locks => {:all => {:locked_by_id => user_id, :locked_at => Time}, 
+  #                       section_index(Fixnum) =>
+  #                        {:locked_section => n, :locked_by_id => user_id, :locked_at => Time}, ...}
   #
-  # accessor for +edit_locks+ attribute. The default value is +[]+
+  # accessor for +edit_locks+ attribute. The default value is +{}+
   # +locked_section+ is the index of the section the user decided to lock
   # since section indeces are unstable (deleting/inserting sections at a low number index changes all the later indexes),
-  # we track +update_section+ which is the latest index identifying the section user locked
+  # we track +section_index+ which is the latest index identifying the section user locked
   def edit_locks
     # return [] if the attribute is not set
-    read_attribute(:edit_locks) || write_attribute(:edit_locks, Array.new)
+    read_attribute(:edit_locks) || write_attribute(:edit_locks, HashWithIndifferentAccess.new)
   end
-  
+
   ##
   ## VERSIONING
   ##
@@ -324,13 +326,21 @@ class Wiki < ActiveRecord::Base
   #### PROTECTED METHODS #######
   protected
 
+  def update_edit_lock_indeces(updating_section, new_sections_count)
+    # find all sections with greater :update_section
+
+    # not updating things
+    return if new_section_count == 0
+
+  end
+
   def update_expired_locks
     @expired_locks_updated = true
     current_time = Time.zone.now
 
-    updated_locks = edit_locks.select do |lock|
+    updated_locks = edit_locks.reject do |section_index, lock|
       # reject if past due and time is used
-      lock[:locked_at] + LOCKING_PERIOD > current_time and !lock[:locked_at].nil?
+      lock[:locked_at] and lock[:locked_at] + LOCKING_PERIOD < current_time
     end
 
     # save locks if something changed
