@@ -34,6 +34,11 @@ class WikiTest < Test::Unit::TestCase
 
     assert !w.editable_by?(users(:blue), 0), 'blue should not be able to edit wiki section 0'
     assert !w.editable_by?(users(:red), 0), 'red should not be able to edit wiki section 0'
+
+    w.unlock
+
+    assert w.editable_by?(users(:blue)), 'blue should be able to edit wiki'
+    assert w.editable_by?(users(:red)), 'red should be able to edit wiki'
   end
   
   
@@ -68,6 +73,11 @@ class WikiTest < Test::Unit::TestCase
 
     assert w.editable_by?(users(:orange), 1), 'orange should be able to edit wiki section 1'
     assert w.editable_by?(users(:blue), 1), 'blue should be able to edit wiki section 1'
+
+    w.unlock(0)
+
+    assert w.editable_by?(users(:orange), 0), 'orange should be able to edit wiki section 0'
+    assert w.editable_by?(users(:red), 0), 'red should be able to edit wiki section 0'
   end
 
   def test_editable_by
