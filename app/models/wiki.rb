@@ -64,11 +64,11 @@ class Wiki < ActiveRecord::Base
 
   # unlocks a previously locked wiki (or a section) so that it can be edited by anyone.
   def unlock(section = :all)
-    if section == :all
+    if section.to_sym == :all
       # wipe away everything. safer in case of stray locks
       edit_locks.clear
     else
-      edit_locks[section] = nil
+      edit_locks.delete(section)
     end
 
     # save without versions or timestamps
@@ -226,18 +226,28 @@ class Wiki < ActiveRecord::Base
   #   ErrorMessage
   #
   def smart_save!(params)
+    params[:section] ||= :all
+
     restore_body(params)
 
-    if params[:version] and version > params[:version].to_i
+    if params[:section] == :all and params[:version] and version > params[:version].to_i
       raise ErrorMessage.new("can't save your data, someone else has saved new changes first.")
     end
- 
+
     unless params[:user] and params[:user].is_a? User
       raise ErrorMessage.new("User is required.")
     end
-    
-    unless editable_by?(params[:user])
-      raise ErrorMessage.new("Cannot save your data, someone else has locked the page.")
+
+    unless editable_by?(params[:user], params[:section])
+      lock_scope = "section #{params[:section]}"
+
+      if params[:section] == :all
+        lock_scope = "page"
+      else
+        lock_scope = "section #{params[:section]}"
+      end
+
+      raise ErrorMessage.new("Cannot save your data, someone else has locked the #{lock_scope}.")
     end
 
     if recent_edit_by?(params[:user])
@@ -245,16 +255,39 @@ class Wiki < ActiveRecord::Base
       versions.find_by_version(version).update_attributes(:body => body, :body_html => body_html, :updated_at => Time.now)
     else
       self.user = params[:user]
-      save!
-    end  
+
+      # disable optimistic locking for saving the data with versioning
+      # optimistic locking is used whenever edit_locks Hash is updated (and then versioning is disabled)
+      without_locking {save!}
+    end
   end
   
   def restore_body(params)
-    if params[:section].blank?
+    if params[:section].blank? or params[:section].to_sym == :all
       # editing the whole document
       self.body = params[:body]
     else
+      # # find the section
       sections = self.sections
+      # updated_section_body = params[:body]
+      #
+      # # find how many sections
+      # new_sections = GreenCloth.new(updated_section_body).sections
+      #
+      # # how many sections we created?
+      # new_sections_size = new_sections.size
+      #
+      # # if the user returned a blank section, it means we wipe this away
+      # new_sections_size = 0 if new_sections.size == 1 and new_sections.first.gsub(/\s/, '') == ""
+      #
+      # # if the first section has no heading it will get merged into the previous
+      # # section, unless it's the first section
+      # # if sections.first
+      #
+      # # update all the locks
+      # update_edit_lock_indeces(params[:section].to_i, new_sections_size)
+
+      # restore the body
       sections[params[:section].to_i] = params[:body]
       self.body = sections.join('')
     end
