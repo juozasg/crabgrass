@@ -148,6 +148,51 @@ class WikiTest < Test::Unit::TestCase
     assert_equal @orange_id, w.locked_by_id(1), "orange should appear as the locker of wiki section 1"
   end
 
+  def test_multi_section_save
+    w = wikis(:multi_section)
+
+    original_body = w.body.clone
+    original_sections = [w.sections[0].clone, w.sections[1].clone]
+    updated_sections = ["h1. section header first updated\n\n", "h1. second updated section header\nwith text\n"]
+
+    # lock two sections
+    w.lock(Time.now, users(:orange), 0)
+    w.lock(Time.now, users(:blue), 1)
+
+    # try to do the wrong thing
+    assert_raise ErrorMessage do
+      w.smart_save! :body => 'catelope', :user => users(:orange)
+    end
+
+    assert_raise ErrorMessage do
+      w.smart_save! :body => updated_sections[0], :user => users(:blue), :section => 0
+    end
+
+    assert_raise ErrorMessage do
+      w.smart_save! :body => updated_sections[0], :user => users(:orange), :section => 1
+    end
+
+    assert_equal original_body, w.body, "wiki body shouldn't be updated by invalid saves"
+
+    # try the right thing with section 0
+    assert_nothing_raised do
+      w.smart_save! :body => updated_sections[0], :user => users(:orange), :section => 0
+    end
+
+    expected_body = original_body.gsub(original_sections[0], updated_sections[0])
+    assert_equal expected_body, w.body, "wiki section 0 should be updated"
+
+    # repeat for section 1
+    assert_nothing_raised do
+      w.smart_save! :body => updated_sections[1], :user => users(:blue), :section => 1
+    end
+
+    expected_body = original_body.gsub(original_sections[0], updated_sections[0])
+    expected_body.gsub!(original_sections[1], updated_sections[1])
+
+    assert_equal expected_body, w.body, "wiki sections 0 and section 1 should be updated"
+  end
+
   def test_wiki_page
   end
 
