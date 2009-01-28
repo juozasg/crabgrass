@@ -19,10 +19,9 @@ See https://labs.riseup.net/code/projects/show/crabgrass for information on rele
 
 = Install optional packages
 
-These packages are optional, but necessary for image thumbnails
-and document previews:
+These packages are optional, but necessary for image thumbnails and document previews.
 
-  apt-get install graphicsmagick openoffice.org openoffice.org-headless msttcorefonts
+  apt-get install openoffice.org openoffice.org-headless msttcorefonts
 
 For more information on generating previews, see ASSETS[link:files/doc/ASSETS.html].
 
@@ -37,7 +36,7 @@ Basic gems to get rails working:
 
 These gems are required for Crabgrass:
 
-  gem install rmagick tzinfo RedCloth --no-ri --no-rdoc
+  gem install tzinfo RedCloth --no-ri --no-rdoc
 
 These gems are optional:
 
