@@ -88,6 +88,8 @@ class Wiki < ActiveRecord::Base
   # if section = +:all+ and no one has locked +:all+ but someone has locked something
   # (preventing editing of all sections at once) returns the first one that locked something
   def locked_by_id(section = :all)
+    update_expired_locks unless @expired_locks_updated
+
     if edit_locks[section]
       return edit_locks[section][:locked_by_id]
     elsif edit_locks[:all]
@@ -133,10 +135,33 @@ class Wiki < ActiveRecord::Base
   # accessor for +edit_locks+ attribute. The default value is +{}+
   # +locked_section+ is the index of the section the user decided to lock
   # since section indeces are unstable (deleting/inserting sections at a low number index changes all the later indexes),
-  # we track +section_index+ which is the latest index identifying the section user locked
+  # we track +locked_section+ which is the latest index identifying the section user locked
   def edit_locks
     # return [] if the attribute is not set
     read_attribute(:edit_locks) || write_attribute(:edit_locks, HashWithIndifferentAccess.new)
+  end
+
+  # When the user sends a request to submit an updated section
+  # they use a section index to refer to what they want to update
+  # this makes it possible they they are referencing to the wrong section
+  # (previous users split/merged sections while this one was working and that changes section indexes)
+  #
+  # this method uses +edit_lcoks+ to convert a +section+ index +user+ thinks refers to a particular section
+  # to a the section index that correctly identifies the section of the wiki body
+  def resolve_updated_section_index(section, user)
+    return :all if section.blank? or section.to_sym == :all
+
+    edit_locks.each do |current_section_index, lock|
+      if lock[:locked_section].to_i == section.to_i
+        if user.nil? or lock[:locked_by_id] == user.id
+          # update the section user holds and return it
+          lock[:locked_section] = current_section_index
+          return current_section_index.to_i
+        end
+      end
+    end
+
+    return section.to_i
   end
 
   ##
@@ -228,8 +253,6 @@ class Wiki < ActiveRecord::Base
   def smart_save!(params)
     params[:section] ||= :all
 
-    restore_body(params)
-
     if params[:section] == :all and params[:version] and version > params[:version].to_i
       raise ErrorMessage.new("can't save your data, someone else has saved new changes first.")
     end
@@ -250,6 +273,16 @@ class Wiki < ActiveRecord::Base
       raise ErrorMessage.new("Cannot save your data, someone else has locked the #{lock_scope}.")
     end
 
+    # reinsert the section into the body
+    self.body = reconstitute_body(params[:section], params[:body])
+
+    # # handle splits/merges
+    # updated_locks = restore_body_and_adjust_locks(params)
+
+    # handle merge/split situations that might mean lock for section index N is now a lock for section
+    # index N+1 or N-1
+    updated_locks = calculate_adjusted_edit_locks(params[:section], params[:body])
+
     if recent_edit_by?(params[:user])
       save_without_revision
       versions.find_by_version(version).update_attributes(:body => body, :body_html => body_html, :updated_at => Time.now)
@@ -260,37 +293,34 @@ class Wiki < ActiveRecord::Base
       # optimistic locking is used whenever edit_locks Hash is updated (and then versioning is disabled)
       without_locking {save!}
     end
+
+    update_edit_locks_attribute(updated_locks)
   end
-  
-  def restore_body(params)
-    if params[:section].blank? or params[:section].to_sym == :all
+
+  def reconstitute_body(section, text)
+    reconsituted_body = ""
+
+    if section.blank? or section == :all
       # editing the whole document
-      self.body = params[:body]
+      reconsituted_body = text
     else
-      # # find the section
       sections = self.sections
-      # updated_section_body = params[:body]
-      #
-      # # find how many sections
-      # new_sections = GreenCloth.new(updated_section_body).sections
-      #
-      # # how many sections we created?
-      # new_sections_size = new_sections.size
-      #
-      # # if the user returned a blank section, it means we wipe this away
-      # new_sections_size = 0 if new_sections.size == 1 and new_sections.first.gsub(/\s/, '') == ""
-      #
-      # # if the first section has no heading it will get merged into the previous
-      # # section, unless it's the first section
-      # # if sections.first
-      #
-      # # update all the locks
-      # update_edit_lock_indeces(params[:section].to_i, new_sections_size)
 
       # restore the body
-      sections[params[:section].to_i] = params[:body]
-      self.body = sections.join('')
+      sections[section.to_i] = text
+      reconsituted_body
+
+      sections.each_with_index do |s, i|
+        reconsituted_body << s
+        if i == section.to_i
+          # don't let users to update sections in a way
+          # that would merge them into the next section
+          reconsituted_body << "\n" unless s =~ /\n\Z/
+        end
+      end
     end
+
+    return reconsituted_body
   end
 
   ##### RENDERING #################################
@@ -381,16 +411,84 @@ class Wiki < ActiveRecord::Base
     GreenCloth.new(body).sections
   end
 
-
   #### PROTECTED METHODS #######
   protected
 
-  def update_edit_lock_indeces(updating_section, new_sections_count)
-    # find all sections with greater :update_section
+  # we need to deal with the fact that users hold locks to sections by index
+  # and that a preceding index section can get deleted (by setting the body to '')
+  # or when a preceding section can get merged/split (by adding removing headings)
+  # in those cases the user will try to update the wrong section index.
+  # so we must store additional info in the +edit_locks+ hash (+locked_section+ value).
+  #
+  # here we update the keys in +edit_locks+ hash
+  # (which represend the actual current sections getting locked)
+  def calculate_adjusted_edit_locks(section_index, updated_section_body)
 
-    # not updating things
-    return if new_section_count == 0
+    # the sections (could be none) that will replace the single section identified by section_index
+    new_sections = GreenCloth.new(updated_section_body).sections
 
+    # the number of new sections we are adding to replace this single section
+    # each new section, except the first one (which might get merged into the previous section)
+    # is counted
+    updated_sections_count = new_sections.size - 1
+
+    # we must determine if we should count the first one
+    first_section_is_heading = GreenCloth.is_heading_section?(new_sections.first)
+
+    if first_section_is_heading
+      # the simplest case, it doesn't matter where these new sections are going
+      # because the first one is clearly delimited and can't be merged
+      updated_sections_count += 1
+    elsif new_sections.size == 1 and !(new_sections.first =~ /\n/) and new_sections.first =~ /^\s*$/
+      # we're deleting a section
+      updated_sections_count = 0
+    elsif section_index == 0
+      # we'll be inserting a section without a heading to replace the current section
+      # in most cases this text without heading will become a part of the previous section
+      # (i.e. section with section_index - 1)
+      # unless we're dealing with section_index = 0 then even a fragment of text is a real section
+      updated_sections_count += 1
+    end
+
+    # how many sections we're adding to the total number of sections
+    # 1 represents the current section that is being replaced
+    section_index_offset = updated_sections_count - 1
+
+    unless section_index_offset == 0
+      adjusted_locks = move_edit_lock_section_indexes(section_index, section_index_offset)
+    else
+      adjusted_locks = edit_locks
+    end
+
+    return adjusted_locks
+  end
+
+  # update every section lock for a section > starting_section_index
+  # by incrementing it by index_offset
+  def move_edit_lock_section_indexes(starting_section_index, index_offset)
+    # update each section_index key that is affected by this change
+    updated_locks = HashWithIndifferentAccess.new
+
+    # we might need to override the lock for the current section.
+    # when we deleting the current section the directly following section
+    # needs to be moved down and it will replace this current section lock
+    replacable_lock = edit_locks[starting_section_index]
+    edit_locks.each do |section_index, lock|
+      # only sections following the one we're replacing need to be updated
+      if section_index.is_a? Fixnum and section_index > starting_section_index.to_i
+        new_section_index = section_index + index_offset
+      else
+        new_section_index = section_index
+      end
+
+      # recreate the lock with a new index
+      # don't replace existing keys unless they are the section that we are saving over
+      if !updated_locks.include?(new_section_index) or updated_locks[new_section_index] == replacable_lock
+        updated_locks[new_section_index] = lock
+      end
+    end
+
+    return updated_locks
   end
 
   def update_expired_locks

@@ -193,6 +193,84 @@ class WikiTest < Test::Unit::TestCase
     assert_equal expected_body, w.body, "wiki sections 0 and section 1 should be updated"
   end
 
+  def test_deleting_section_updates_locks
+    w = wikis(:multi_section)
+
+    w.lock(Time.now, users(:blue), 0)
+    w.lock(Time.now, users(:orange), 1)
+
+    assert_equal @blue_id, w.locked_by_id(0), "blue should appear as the locker of wiki section 0"
+    assert_equal @orange_id, w.locked_by_id(1), "orange should appear as the locker of wiki section 1"
+
+    # blue deletes section 0
+    w.smart_save! :body => "", :user => users(:blue), :section => 0
+
+    assert_not_equal @blue_id, w.locked_by_id(0), "blue should not appear as the locker of wiki section 0 (after blue deletes 0)"
+    assert_equal @orange_id, w.locked_by_id(0), "orange should appear as the locker of wiki section 0 (after blue deletes 0)"
+
+    w.unlock(0)
+    assert_nil w.locked_by_id(0), "no one should appear as the locker of wiki section 0"
+  end
+
+  def test_inserting_section_updates_locks
+    w = wikis(:multi_section)
+
+    w.lock(Time.now, users(:blue), 0)
+    w.lock(Time.now, users(:orange), 1)
+
+    assert_equal @blue_id, w.locked_by_id(0), "blue should appear as the locker of wiki section 0"
+    assert_equal @orange_id, w.locked_by_id(1), "orange should appear as the locker of wiki section 1"
+
+    # blue splits section 0
+    w.smart_save! :body => "h2. section title one\n\nh2. another section\n\n", :user => users(:blue), :section => 0
+
+    assert_equal @blue_id, w.locked_by_id(0), "blue should appear as the locker of wiki section 0 (after blue splits 0)"
+    assert_nil w.locked_by_id(1), "no one should appear as the locker of wiki section 1 (after blue splits 0)"
+    assert_equal @orange_id, w.locked_by_id(2), "orange should appear as the locker of wiki section 2 (after blue splits 0)"
+
+    w.unlock(0)
+    assert_nil w.locked_by_id(0), "no one should appear as the locker of wiki section 0"
+  end
+
+  def test_resolve_updated_section_index
+    w = wikis(:multi_section)
+
+    assert_equal :all, w.resolve_updated_section_index("all", users(:blue)), ":all section lock should resolve to :all"
+    assert_equal :all, w.resolve_updated_section_index(:all, users(:blue)), "'all' section lock should resolve to :all"
+
+    assert_equal 0, w.resolve_updated_section_index("0", users(:blue)), "'0' section lock should resolve to 0"
+    assert_equal 1, w.resolve_updated_section_index(1, users(:blue)), "1 section lock should resolve 1"
+
+    w.lock(Time.now, users(:blue), 0)
+    w.lock(Time.now, users(:orange), 1)
+
+    assert_equal 0, w.resolve_updated_section_index(0, users(:blue)), "when blue locks section 0, 0 should resolve to 0 for blue"
+    assert_equal 1, w.resolve_updated_section_index(1, users(:orange)), "when orange locks section 1, 1 should resolve to 1 for orange"
+    assert_equal 1, w.resolve_updated_section_index(1, users(:orange)), "when orange locks section 1, 1 should resolve to 1 for blue"
+
+    # now delete the first section
+    w.smart_save! :body => "", :user => users(:blue), :section => 0
+
+    assert_equal 0, w.resolve_updated_section_index(0, users(:blue))
+
+    # what orange thinks is section '1' is actually 0
+    assert_equal 0, w.resolve_updated_section_index(1, users(:orange)), "when orange locks section 1 and blue deletes section 0, 1 should resolve to 0 for orange"
+    # now orange should be up to date on the fact that '0' means '0'
+    assert_equal 0, w.resolve_updated_section_index(0, users(:orange))
+
+    # blue locks section 1
+    w.lock(Time.now, users(:blue), 1)
+
+    # orange inserts a couple of sections to replace section 0
+    w.smart_save! :body => "h2. section title\n\nh2. more section title\n\n", :user => users(:orange), :section => 0
+
+    # what blue thinks is section '1' is actually 2
+    assert_equal 2, w.resolve_updated_section_index(1, users(:blue)),
+      "when blue locks section 1 and organge splits section 0 in two parts, 1 should resolve to 2 for blue"
+    # now blue should be up to date on the fact that '2' means '2'
+    assert_equal 2, w.resolve_updated_section_index(2, users(:blue))
+  end
+
   def test_wiki_page
   end
 

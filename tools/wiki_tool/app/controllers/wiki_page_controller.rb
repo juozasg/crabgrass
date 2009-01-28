@@ -96,17 +96,11 @@ class WikiPageController < BasePageController
     redirect_to page_url(@page, :action => 'show')
   end
 
-  # # PUT /group/wiki-name
-  # def update
-  #   save
-  #   @section = nil
-  # end
-
   # TODO: make post only    
   def break_lock
     # will unlock all sections
     @wiki.unlock
-    redirect_to page_url(@page, :action => 'edit', :section => params[:section])
+    redirect_to page_url(@page, :action => 'edit', :section => @section)
   end
   
   # xhr only
@@ -136,7 +130,8 @@ class WikiPageController < BasePageController
   def save
     begin
       @wiki.smart_save!( params[:wiki].merge(:user => current_user, :section => @section) )
-      unlock
+      # unlock if we have the lock
+      unlock if @wiki.locked_by_id(@section) == current_user.id
       current_user.updated(@page)
       #@page.save
       redirect_to page_url(@page, :action => 'show')
@@ -147,10 +142,9 @@ class WikiPageController < BasePageController
     rescue ErrorMessage => exc
       flash_message_now :error => exc.to_s
     end
-  end 
+  end
 
   def unlock
-    # if @wiki.locked_by_id(@section) == current_user.id
     @wiki.unlock(@section)
   end
 
@@ -163,16 +157,15 @@ class WikiPageController < BasePageController
 
   # called early in filter chain
   def fetch_data
+    @section = :all
     return true unless @page
+
     @wiki = @page.data
 
-    if params[:section].blank? or params[:section] == "all"
-      @section = :all
-    else
-      @section = params[:section].to_i
-    end
-
-    # @something_locked_for_me = !@wiki.editable_by?(current_user, :all) if logged_in?
+    # get up to date section index
+    # because the user submitted index might refer to a wrong section
+    # if sections were split or merged
+    @section = @wiki.resolve_updated_section_index(params[:section], current_user)
   end
 
   # before filter

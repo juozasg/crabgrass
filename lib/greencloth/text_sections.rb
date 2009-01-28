@@ -63,4 +63,15 @@ module GreenClothTextSections
     return self.index_split(section_start_re)
   end
 
+  module ClassMethods
+    # returns true if +section+ starts with a section heading markup
+    def is_heading_section?(section)
+      section_start_re = Regexp.union(GreenCloth::TEXTILE_HEADING_RE, GreenCloth::HEADINGS_RE)
+      return (section_start_re =~ section) == 0
+    end
+  end
+
+  def self.included(klass)
+    klass.extend(ClassMethods)
+  end
 end
