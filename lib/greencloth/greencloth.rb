@@ -88,6 +88,8 @@ require 'cgi'
 module GreenClothFormatterHTML
   include RedCloth::Formatters::HTML
 
+  attr_reader :wiki_section_marked
+
   # alas, so close, but so far away. most times this is called with a single
   # char at a time, so this won't work:
   #def escape_pre(text)
@@ -205,6 +207,7 @@ class GreenCloth < RedCloth::TextileDoc
   attr_accessor :original
   attr_accessor :offtags
   attr_accessor :formatter
+  attr_accessor :wrap_section_html
 
   def initialize(string, default_group_name = 'page', restrictions = [])
     @default_group = default_group_name
@@ -228,7 +231,11 @@ class GreenCloth < RedCloth::TextileDoc
   def to_html(*before_filters, &block)
     @block = block
 
-    before_filters += [:edit_section_links, :normalize_code_blocks, :offtag_obvious_code_blocks,
+    section_start_re = Regexp.union(GreenCloth::TEXTILE_HEADING_RE, GreenCloth::HEADINGS_RE)
+    # get the sections
+    # sections = self.index_split(section_start_re)
+
+    before_filters += [:normalize_code_blocks, :offtag_obvious_code_blocks,
       :bracket_links, :auto_links, :headings, :quoted_block,
       :tables_with_tabs, :wrap_long_words]
 
@@ -237,8 +244,11 @@ class GreenCloth < RedCloth::TextileDoc
 
     apply_rules(before_filters)
     html = to(GreenClothFormatterHTML)
+    html = add_wiki_section_divs(html) if wrap_section_html
+
     extract_offtags(html)
 
+    # mark off
     return html
   end
 

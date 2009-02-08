@@ -1,61 +1,39 @@
 module GreenClothTextSections
-  # %r{
-  #     ^h[123]\.                   # beginning of the section heading like 'h1.'
-  #     .*?                         # section contents
-  #     (?=\Z|(^[h][123]\.))        # lookahead matches for next section heading or end of string
-  #   }xm
-  
-  # insert edit section links for every section
-  def edit_section_links(text)
-    # don't do anything unless we have a block
-    return if @block.nil?
 
-    section_start_re = Regexp.union(GreenCloth::TEXTILE_HEADING_RE, GreenCloth::HEADINGS_RE)
-    # get the sections
-    sections = text.index_split(section_start_re)
-    
-    # no edit section links for a single section
-    return if sections.size == 1
-    
-    text.replace('')
-    sections.each_with_index do |section, i|
-      if /(^h[123]\.)(.*?$)(.*)/m =~ section
-        # h1. style section
-        heading = $~[1]
-        title = $~[2]
-        content = $~[3]
-        
-        # put section link between h1. and the rest of the section
-        text << heading + " " + edit_section_link_markup(title, i) + title + content
-      elsif /\A\s*\Z/ =~ section
-        # whitespace section
-        text << section
-      else
-        # setext section or no heading section
-        title = ""
-        # there must be a space between section title and edit link markup
-        section = " " + section
-        
-        if section =~ GreenCloth::HEADINGS_RE
-          title = section.split(/\r?\n/).first
-        end
-        text << edit_section_link_markup(title, i) + section
-      end
+  def extract_section_title(section_text)
+    if /(^h[123]\.)(.*?$)(.*)/m =~ section_text
+      # h1. style section
+      title = $~[2]
+    else
+      title = section_text.split("\n").first.to_s
     end
   end
 
-  # generate 'edit section' link markup for section number +index+
-  def edit_section_link_markup(title, index)
-    # don't generate any links unless we have a block
-    return "" if @block.nil?
+  def add_wiki_section_divs(input)
+    html_sections = input.index_split(/<\s*h[123]/)
 
-    link = @block.call(:edit_section => true, :section_title => title.to_s, :section_index => index)
-    return "" if link.nil? or link.empty?
+    start_div = "<div class=\"wiki_section\" id=\"wiki_section-%d\">\n"
+    end_div = "\n</div>\n"
 
-    # offtag the link and embed it in a span
-    "%(editsection)#{offtag_it(link)}%" 
+    section_index = 0
+    output = ""
+
+    html_sections.each do |section|
+      output << start_div % section_index
+
+      # indent lines
+      lines = section.split("\n")
+      lines.each {|l| output << "  " + l + "\n"}
+
+      output << end_div
+      section_index += 1
+    end
+
+    # strip the trailing newline from the last closing div
+    output.chomp! if section_index > 0
+    return output
   end
-  
+
   # get all sections in an array
   def sections
     section_start_re = Regexp.union(GreenCloth::TEXTILE_HEADING_RE, GreenCloth::HEADINGS_RE)

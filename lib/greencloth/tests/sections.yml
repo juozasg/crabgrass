@@ -5,8 +5,10 @@ in: |-
   
   line line line
 out: |-
-  <p>start unheaded section</p>
-  <p>line line line</p>
+  <div class="wiki_section" id="wiki_section-0">
+    <p>start unheaded section</p>
+    <p>line line line</p>
+  </div>
 ---
 name: one section with heading
 in: |-
@@ -14,8 +16,10 @@ in: |-
 
   here we go now!
 out: |-
-  <h2>are you ready?!!?</h2>
-  <p>here we go now!</p>
+  <div class="wiki_section" id="wiki_section-0">
+    <h2>are you ready?!!?</h2>
+    <p>here we go now!</p>
+  </div>
 ---
 name: some mixed style sections
 in: |-
@@ -28,11 +32,15 @@ in: |-
   ==============
   
   more lalas
-out: |- 
-  <h2><span class="editsection"><a href="/edit?section=1"><img src="http://localhost:3000/images/actions/pencil.png" alt="" />edit section</a></span> first section</h2>
-  <p>some blahs</p>
-  <h1><span class="editsection"><a href="/edit?section=2"><img src="http://localhost:3000/images/actions/pencil.png" alt="" />edit section</a></span> second section</h1>
-  <p>more lalas</p>
+out: |-
+  <div class="wiki_section" id="wiki_section-0">
+    <h2>first section</h2>
+    <p>some blahs</p>
+  </div>
+  <div class="wiki_section" id="wiki_section-1">
+    <h1>second section</h1>
+    <p>more lalas</p>
+  </div>
 ---
 name: section without heading
 in: |-
@@ -45,11 +53,15 @@ in: |-
   
   more lalas
 out: |-
-  <p><span class="editsection"><a href="/edit?section=0"><img src="http://localhost:3000/images/actions/pencil.png" alt="" />edit section</a></span> some text<br />
-  one more line of text without a heading</p>
-  <p>some blahs</p>
-  <h1><span class="editsection"><a href="/edit?section=1"><img src="http://localhost:3000/images/actions/pencil.png" alt="" />edit section</a></span> first section heading here</h1>
-  <p>more lalas</p>
+  <div class="wiki_section" id="wiki_section-0">
+    <p>some text<br />
+    one more line of text without a heading</p>
+    <p>some blahs</p>
+  </div>
+  <div class="wiki_section" id="wiki_section-1">
+    <h1>first section heading here</h1>
+    <p>more lalas</p>
+  </div>
 ---
 name: multiple sections with text
 in: |-
@@ -74,17 +86,23 @@ in: |-
   
   section 4 first non-blank line
 out: |-
-  <h2><span class="editsection"><a href="/edit?section=0"><img src="http://localhost:3000/images/actions/pencil.png" alt="" />edit section</a></span> Section One</h2>
-  <p>section one line one is here<br />
-  section one line two is next</p>
-  <p>Here is section one still</p>
-  <h1><span class="editsection"><a href="/edit?section=1"><img src="http://localhost:3000/images/actions/pencil.png" alt="" />edit section</a></span> Section Two</h1>
-  <p>Section two first line<br />
-  Section two another line</p>
-  <h2><span class="editsection"><a href="/edit?section=2"><img src="http://localhost:3000/images/actions/pencil.png" alt="" />edit section</a></span> Section 3 with h2</h2>
-  <p>One more line for section 3</p>
-  <h3><span class="editsection"><a href="/edit?section=3"><img src="http://localhost:3000/images/actions/pencil.png" alt="" />edit section</a></span> final section 4</h3>
-  <p>section 4 first non-blank line</p>
+  <div class="wiki_section" id="wiki_section-0">
+    <h2>Section One</h2>
+    <p>section one line one is here<br />
+    section one line two is next</p>
+    <p>Here is section one still</p>
+  </div>
+  <div class="wiki_section" id="wiki_section-1">
+    <h1>Section Two</h1>
+    <p>Section two first line<br />
+    Section two another line</p>
+  </div>
 
-
-
+  <div class="wiki_section" id="wiki_section-2">
+    <h2>Section 3 with h2</h2>
+    <p>One more line for section 3</p>
+  </div>
+  <div class="wiki_section" id="wiki_section-3">
+    <h3>final section 4</h3>
+    <p>section 4 first non-blank line</p>
+  </div>
