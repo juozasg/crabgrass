@@ -232,10 +232,8 @@ class GreenCloth < RedCloth::TextileDoc
     @block = block
 
     section_start_re = Regexp.union(GreenCloth::TEXTILE_HEADING_RE, GreenCloth::HEADINGS_RE)
-    # get the sections
-    # sections = self.index_split(section_start_re)
 
-    before_filters += [:normalize_code_blocks, :offtag_obvious_code_blocks,
+    before_filters += [:delete_leading_whitespace, :normalize_code_blocks, :offtag_obvious_code_blocks,
       :bracket_links, :auto_links, :headings, :quoted_block,
       :tables_with_tabs, :wrap_long_words]
 
@@ -278,7 +276,10 @@ class GreenCloth < RedCloth::TextileDoc
     end
   end
   
-  
+  def delete_leading_whitespace(text)
+    self.sub!(/\A\s*/, '')
+  end
+
   def normalize_code_blocks(text)
     ## make funky code blocks behave like a normal code block.
     text.gsub!(/^\/--( .*)?\s*$/, '<code\1>')

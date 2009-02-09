@@ -24,6 +24,7 @@ module GreenClothTextSections
       # indent lines
       lines = section.split("\n")
       lines.each {|l| output << "  " + l + "\n"}
+      output.chomp!
 
       output << end_div
       section_index += 1
@@ -38,7 +39,18 @@ module GreenClothTextSections
   def sections
     section_start_re = Regexp.union(GreenCloth::TEXTILE_HEADING_RE, GreenCloth::HEADINGS_RE)
     # get the sections
-    return self.index_split(section_start_re)
+    sections = self.index_split(section_start_re)
+
+    # cut out leading whitespace and newlines, but preserve white space on the first line with text
+    sections[0] = sections[0].sub(/\A\s*\n/, '')
+
+    # merge up the first section if it is all whitespace or empty
+    if sections.size > 1 and sections.first =~ /\A\s*\Z/
+      sections[1] = sections[0] + sections[1]
+      sections.shift
+    end
+
+    return sections
   end
 
   module ClassMethods

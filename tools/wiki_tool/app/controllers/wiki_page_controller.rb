@@ -39,6 +39,7 @@ class WikiPageController < BasePageController
     end
     # render if needed
     @wiki.render_html{|body| render_wiki_html(body, @page.owner_name)}
+    @wiki_html = generate_wiki_html_for_user(@wiki, current_user)
   end
 
   def version
