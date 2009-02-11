@@ -107,6 +107,15 @@ class Wiki < ActiveRecord::Base
     end
   end
 
+  # returns true if +section+ is locked by user
+  # unlike +locked_by_id+ method this method will not
+  # count a single section to be locked by +user+ when
+  # that user has locked :all sections
+  def locked_by?(user, section = :all)
+    return !edit_locks[section].nil? && edit_locks[section][:locked_by_id] == user.id
+  end
+
+
   # returns true if the page is free to be edited by +user+ (ie, not locked by someone else)
   def editable_by?(user, section = :all)
     update_expired_locks unless @expired_locks_updated
