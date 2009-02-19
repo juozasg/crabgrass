@@ -106,10 +106,12 @@ module GroupHelper
   
   def request_state_links
     hash = {:controller => params[:controller], :action => params[:action], :group_id => params[:group_id]}
+
     content_tag :div, link_line(
-      link_to_active(:pending.t, hash.merge(:state => 'pending')), 
+      link_to_active(:pending.t, hash.merge(:state => 'pending')),
       link_to_active(:approved.t, hash.merge(:state => 'approved')),
-      link_to_active(:rejected.t, hash.merge(:state => 'rejected'))
+      link_to_active(:rejected.t, hash.merge(:state => 'rejected')),
+      link_to_active(:ignored.t, hash.merge(:state => 'ignored'))
     ), :style => 'margin-bottom: 1em'
   end
 
@@ -122,14 +124,19 @@ module GroupHelper
     else
       path << name
     end
+    options[:title] = tag.name
     link_to tag.name, group_url(:id => @group, :action => 'tags') + '/' + path.join('/'), options
   end
-
+  
   def may_see_members?
+    may_see_members_of?(@group)
+  end
+
+  def may_see_members_of? group
     if logged_in?
-      current_user.may?(:admin,@group) || current_user.member_of?(@group) || @group.profiles.visible_by(current_user).may_see_members?
+      current_user.may?(:admin,group) || current_user.member_of?(group) || group.profiles.visible_by(current_user).may_see_members?
     else
-      @group.profiles.public.may_see_members?
+      group.profiles.public.may_see_members?
     end
   end
 
@@ -152,7 +159,9 @@ module GroupHelper
 
   #Defaults!
   def show_section(name)
-    widgets = @group.group_setting.template_data || {"section1" => "group_wiki", "section2" => "recent_pages"}
+    @group.group_setting ||= GroupSetting.new
+    @group.group_setting.template_data ||= {"section1" => "group_wiki", "section2" => "recent_pages"}
+    widgets = @group.group_setting.template_data
     widget = widgets[name]
     #template = widget[0]
     #local_vars = widget[1]
