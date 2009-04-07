@@ -164,8 +164,7 @@ module UserExtension::Sharing
   #
   def share_page_with!(page, recipients, options)
     return true unless recipients
-    
-    # wbere do we use options[:notify]? and if we'd use it it should be options[:send_to_inbox]
+     # wbere do we use options[:notify]? and if we'd use it it should be options[:send_to_inbox]
     options[:notify] = true if options[:message] or options[:send_emails]
     users, groups, emails = Page.parse_recipients!(recipients)
     users_to_email = []
@@ -284,6 +283,7 @@ end
     # if an access level is given, we set it
     if options.key?(:access) # might be nil
       attrs[:access] = options[:access]
+      raise options[:access].inspect
     else
       options[:grant_access] ||= nil # :view
       unless user.may?(options[:grant_access], page)

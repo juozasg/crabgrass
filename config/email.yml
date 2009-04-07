@@ -10,20 +10,21 @@ production:
   delivery_method: :smtp
   smtp_settings:
     domain: localhost
-    address: mail.riseup.net
+    address: brueckenschlaeger.de
     port: 587
     authentication: :plain
-    user_name: "xxxxxxxxx"
-    password: "xxxxxxxxx"
-  
+    user_name: "andi@brueckenschlaeger.de"
+    password: "UrinHopl!"
+
+
 development:
 #  delivery_method: :sendmail
   delivery_method: :smtp
   smtp_settings:
-    domain: localhost
-    address: smtp.gmail.com
+    domain: brueckenschlaeger.de
+    address: mail.brueckenschlaeger.de
     port: 587
     authentication: :plain
-    user_name: xxxxxx@gmail.com
-    password: xxxxxxx
+    user_name: "andi@brueckenschlaeger.de"
+    password: "UrinHopl!"
 
