@@ -33,12 +33,35 @@ class BasePage::ParticipationController < ApplicationController
 
   #       params[:recipients] ||= {}
 
-  def auto_complete_for_recipient_name
-    setup_sharing_populations
-    @recipients = [@share_page_groups, @share_contributors, @share_groups,
-                   @share_networks, @share_committees, @share_friends,
-                   @share_peers].flatten.compact.uniq
+  def auto_complete_for_recipient_name    
+    # save possible recipients in session
+    params[:page_id] = params[:page_id].to_i if params[:page_id]
+    unless(session[:sharing_population] && params[:page_id] &&
+           session[:sharing_population][params[:page_id]] &&
+           session[:sharing_population][params[:page_id]][:set_at] > (Time.now - 3.minutes))
+      setup_sharing_populations
+      @recipients = [@share_page_groups, @share_contributors, @share_groups,
+                     @share_networks, @share_committees, @share_friends,
+                     @share_peers].flatten.compact.uniq
+
+      @recipient_group_ids = @recipients.map {|recipient| 
+        recipient.id if recipient.kind_of?(Group)
+      }
+      @recipient_group_ids.compact!
+      @recipient_user_ids = @recipients.map{|recipient|
+        recipient.id if recipient.kind_of?(User)
+      }
+      @recipient_user_ids.compact!
+      session[:sharing_population] ||= []
+      session[:sharing_population][params[:page_id]] = {:groups => @recipient_group_ids, :users => @recipient_user_ids,
+        :set_at => Time.now }
+    else
+        @recipients = [User.find(session[:sharing_population][params[:page_id]][:users]),
+                     Group.find(session[:sharing_population][params[:page_id]][:groups])].flatten
+    end
+    
     @recipients = @recipients.select { |rcpt|
+           
       (rcpt.name =~ Regexp.new(params[:recipient][:name]) ||
        rcpt.display_name =~ Regexp.new(params[:recipient][:name]))
     }
@@ -171,8 +194,10 @@ class BasePage::ParticipationController < ApplicationController
       # now get the recipients from the prebuild hash:
       # recipients with options, that looks like
       # {:animals => [:grant_access => :view], :blue => [:grant_access => :admin]
+     
       recipients_with_options = get_recipients_with_options(params[:recipients])
-        # now we use default_options to handle the recipients simply given by a list of names
+     
+    # now we use default_options to handle the recipients simply given by a list of names
       # they don't have the options supported
       # [TODO] call a after - method that offers the ability to postconfigure those on a new screen:
       # The user should get a list of all the user, he selected without options.
