@@ -290,7 +290,7 @@ class AccountControllerTest < ActionController::TestCase
   end
 
   def auth_token(token)
-    CGI::Cookie.new('name' => 'auth_token', 'value' => token)
+    @request.cookies['auth_token'] = token
   end
 
   def cookie_for(user)
