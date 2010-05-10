@@ -71,6 +71,7 @@ Scenario: Clicking 'Remove' for another coordinator (council-member) shows propo
   And I follow "Remove" within user: "red"'s row
   Then I should see "This member is also a member of the council. Do you want to propose to remove 'Red'?"
 
+@dev
 Scenario: I create a propose to remove another council member
   Given I am a member of the council
   When I go to that group's membership review page
@@ -78,4 +79,5 @@ Scenario: I create a propose to remove another council member
   Then I should not see "Remove" within user: "red"'s row
   And I should see "You have proposed to remove user Red! who is also a member of the council. To remove a coordinator (council-member) two thirds of all coordinators need to approve this."
   And I should see "Removal Requested" within user: "red"'s row
-
+  And I should receive an email with subject: "Periwinkle! has proposed to remove coordinator user Red from group diggers"
+  And user: blue should receive an email with subject: "Periwinkle! has proposed to remove coordinator user Red from group diggers"

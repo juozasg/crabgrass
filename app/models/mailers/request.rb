@@ -13,6 +13,11 @@ module Mailers::Request
        :group_home => group_home })
   end
 
+
+  def request_to_remove_coordinator_user(request, recipient)
+
+  end
+
   def request_to_destroy_our_group(request, user)
     @group = request.group
     @user = user
